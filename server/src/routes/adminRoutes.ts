@@ -7,6 +7,7 @@ import {
   getAllDeliveryPartners,
   createDeliveryPartner,
   toggleDeliveryPartnerStatus,
+  approveDeliveryPartner,
 } from '../controllers/adminController';
 import { authMiddleware } from '../middleware/auth';
 import { adminMiddleware } from '../middleware/admin';
@@ -23,6 +24,7 @@ router.put('/orders/:id/assign', assignDeliveryPartner as any);
 
 router.get('/delivery-partners', getAllDeliveryPartners as any);
 router.post('/delivery-partners', createDeliveryPartner as any);
+router.patch('/delivery-partners/:id/approve', approveDeliveryPartner as any);
 router.patch('/delivery-partners/:id/toggle', toggleDeliveryPartnerStatus as any);
 
 export default router;

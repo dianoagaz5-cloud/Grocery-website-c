@@ -23,11 +23,16 @@ export const partnerLogin = async (req: Request, res: Response) => {
       return res.status(401).json({ success: false, message: 'Invalid credentials' });
     }
 
-    if (!partner.isActive) {
-      return res.status(403).json({ success: false, message: 'Your partner account is inactive. Contact admin.' });
+    if (partner.status === 'PENDING' || !partner.isActive) {
+      return res.status(403).json({
+        success: false,
+        message: partner.status === 'PENDING'
+          ? 'Your delivery partner account is pending admin approval.'
+          : 'Your partner account is inactive. Contact admin.',
+      });
     }
 
-    const token = jwt.sign({ id: partner.id, email: partner.email }, JWT_SECRET, { expiresIn: '7d' });
+    const token = jwt.sign({ id: partner.id, email: partner.email, role: 'DELIVERY' }, JWT_SECRET, { expiresIn: '7d' });
     const { password: _, ...partnerData } = partner;
 
     return res.json({

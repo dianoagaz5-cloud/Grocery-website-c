@@ -72,25 +72,46 @@ const products = [
 async function seed() {
   console.log('Seeding InstantMart database...');
 
-  // Create admin user
+  // 1. Create primary admin user (admin@instantmart.com)
   const adminPassword = await bcrypt.hash('admin123', 10);
   await prisma.user.upsert({
-    where: { email: 'admin@example.com' },
-    update: {},
+    where: { email: 'admin@instantmart.com' },
+    update: {
+      password: adminPassword,
+    },
     create: {
-      name: 'Admin',
-      email: 'admin@example.com',
+      name: 'Super Admin',
+      email: 'admin@instantmart.com',
       password: adminPassword,
       phone: '+1 555 0100',
     },
   });
-  console.log('Admin user verified: admin@example.com / admin123');
+  console.log('Primary Admin ready: admin@instantmart.com / admin123');
 
-  // Create delivery partner
+  // Secondary admin
+  await prisma.user.upsert({
+    where: { email: 'admin@example.com' },
+    update: {
+      password: adminPassword,
+    },
+    create: {
+      name: 'Admin Demo',
+      email: 'admin@example.com',
+      password: adminPassword,
+      phone: '+1 555 0101',
+    },
+  });
+  console.log('Secondary Admin ready: admin@example.com / admin123');
+
+  // 2. Create delivery partners (both approved and pending for testing)
   const partnerPassword = await bcrypt.hash('delivery123', 10);
   await prisma.deliveryPartner.upsert({
     where: { email: 'rahul@example.com' },
-    update: {},
+    update: {
+      password: partnerPassword,
+      isActive: true,
+      status: 'APPROVED',
+    },
     create: {
       name: 'Rahul Sharma',
       email: 'rahul@example.com',
@@ -98,18 +119,34 @@ async function seed() {
       phone: '+1 555 0192',
       vehicleType: 'bike',
       isActive: true,
+      status: 'APPROVED',
     },
   });
-  console.log('Delivery partner verified: rahul@example.com / delivery123');
+  console.log('Approved Delivery partner ready: rahul@example.com / delivery123');
 
-  // Create sample products
+  await prisma.deliveryPartner.upsert({
+    where: { email: 'johndoe@example.com' },
+    update: {},
+    create: {
+      name: 'John Doe',
+      email: 'johndoe@example.com',
+      password: partnerPassword,
+      phone: '+1 555 0193',
+      vehicleType: 'scooter',
+      isActive: false,
+      status: 'PENDING',
+    },
+  });
+  console.log('Pending Delivery partner ready (for approval test): johndoe@example.com / delivery123');
+
+  // 3. Create sample products with remote hosted image URLs (Cloudinary / Unsplash)
   for (const p of products) {
     const existing = await prisma.product.findFirst({ where: { name: p.name } });
     if (!existing) {
       await prisma.product.create({ data: p });
     }
   }
-  console.log(`Seeded ${products.length} sample products.`);
+  console.log(`Seeded ${products.length} sample products with remote CDN images.`);
 }
 
 seed()

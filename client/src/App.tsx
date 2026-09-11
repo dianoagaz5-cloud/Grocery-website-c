@@ -1,9 +1,11 @@
+import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/oContext';
 import { CartProvider } from './context/cartContext';
 import { Toaster } from 'react-hot-toast';
+import Loading from './components/loading';
 
-// Client Pages
+// Client Pages (Core bundle for instant customer access)
 import AppLayout from './pages/appLayout';
 import Home from './pages/home';
 import Products from './pages/products';
@@ -16,18 +18,18 @@ import Checkout from './pages/checkout';
 import Addresses from './pages/addresses';
 import Login from './pages/login';
 
-// Admin Pages
-import AdminLayout from './pages/admin/adminLayout';
-import AdminDashboard from './pages/admin/adminDashboard';
-import AdminProducts from './pages/admin/adminProducts';
-import AdminProductForm from './pages/admin/adminProductForm';
-import AdminOrders from './pages/admin/adminOrders';
-import AdminDeliveryPartners from './pages/admin/adminDeliveryPartners';
+// Code Splitting (React.lazy) for Admin Module
+const AdminLayout = lazy(() => import('./pages/admin/adminLayout'));
+const AdminDashboard = lazy(() => import('./pages/admin/adminDashboard'));
+const AdminProducts = lazy(() => import('./pages/admin/adminProducts'));
+const AdminProductForm = lazy(() => import('./pages/admin/adminProductForm'));
+const AdminOrders = lazy(() => import('./pages/admin/adminOrders'));
+const AdminDeliveryPartners = lazy(() => import('./pages/admin/adminDeliveryPartners'));
 
-// Delivery Pages
-import DeliveryLayout from './pages/delivery/deliveryLayout';
-import DeliveryLogin from './pages/delivery/deliveryLogin';
-import DeliveryDashboard from './pages/delivery/deliveryDashboard';
+// Code Splitting (React.lazy) for Delivery Module
+const DeliveryLayout = lazy(() => import('./pages/delivery/deliveryLayout'));
+const DeliveryLogin = lazy(() => import('./pages/delivery/deliveryLogin'));
+const DeliveryDashboard = lazy(() => import('./pages/delivery/deliveryDashboard'));
 
 export default function App() {
   return (
@@ -52,21 +54,42 @@ export default function App() {
               <Route path="addresses" element={<Addresses />} />
             </Route>
 
-            {/* Admin Routes */}
-            <Route path="/admin" element={<AdminLayout />}>
-              <Route index element={<AdminDashboard />} />
-              <Route path="products" element={<AdminProducts />} />
-              <Route path="products/new" element={<AdminProductForm />} />
-              <Route path="products/:id/edit" element={<AdminProductForm />} />
-              <Route path="orders" element={<AdminOrders />} />
-              <Route path="delivery-partners" element={<AdminDeliveryPartners />} />
+            {/* Code-Split Admin Routes */}
+            <Route
+              path="/admin"
+              element={
+                <Suspense fallback={<Loading />}>
+                  <AdminLayout />
+                </Suspense>
+              }
+            >
+              <Route index element={<Suspense fallback={<Loading />}><AdminDashboard /></Suspense>} />
+              <Route path="products" element={<Suspense fallback={<Loading />}><AdminProducts /></Suspense>} />
+              <Route path="products/new" element={<Suspense fallback={<Loading />}><AdminProductForm /></Suspense>} />
+              <Route path="products/:id/edit" element={<Suspense fallback={<Loading />}><AdminProductForm /></Suspense>} />
+              <Route path="orders" element={<Suspense fallback={<Loading />}><AdminOrders /></Suspense>} />
+              <Route path="delivery-partners" element={<Suspense fallback={<Loading />}><AdminDeliveryPartners /></Suspense>} />
             </Route>
 
-            {/* Delivery Partner Routes */}
-            <Route path="/delivery/login" element={<DeliveryLogin />} />
-            <Route path="/delivery" element={<DeliveryLayout />}>
+            {/* Code-Split Delivery Partner Routes */}
+            <Route
+              path="/delivery/login"
+              element={
+                <Suspense fallback={<Loading />}>
+                  <DeliveryLogin />
+                </Suspense>
+              }
+            />
+            <Route
+              path="/delivery"
+              element={
+                <Suspense fallback={<Loading />}>
+                  <DeliveryLayout />
+                </Suspense>
+              }
+            >
               <Route index element={<Navigate to="/delivery/dashboard" replace />} />
-              <Route path="dashboard" element={<DeliveryDashboard />} />
+              <Route path="dashboard" element={<Suspense fallback={<Loading />}><DeliveryDashboard /></Suspense>} />
             </Route>
 
             {/* Fallback */}

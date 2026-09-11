@@ -67,6 +67,7 @@ export interface DeliveryPartner {
     avatar: string;
     vehicleType: "bike" | "scooter" | "car";
     isActive: boolean;
+    status?: "PENDING" | "APPROVED" | "REJECTED";
     createdAt: string;
 }
 

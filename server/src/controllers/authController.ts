@@ -1,4 +1,4 @@
-﻿import { Request, Response } from 'express';
+import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
@@ -10,7 +10,7 @@ const REFRESH_SECRET = process.env.REFRESH_TOKEN_SECRET || 'default_refresh_secr
 const IS_PROD = process.env.NODE_ENV === 'production';
 
 const ADMIN_EMAILS = () =>
-  (process.env.ADMIN_EMAILS || 'admin@example.com')
+  (process.env.ADMIN_EMAILS || 'admin@instantmart.com,admin@example.com')
     .split(',')
     .map((e) => e.trim().toLowerCase());
 

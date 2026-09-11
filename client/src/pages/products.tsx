@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { dummyProducts } from '../assets/assets';
 import ProductCard from '../components/productCard';
+import ProductSkeleton from '../components/productSkeleton';
 import FilterPanel from '../components/filterPanel';
 import type { Product } from '../types';
 
@@ -10,9 +11,16 @@ export default function Products() {
   const categoryParam = searchParams.get('category') || '';
   const sortParam = searchParams.get('sort') || 'featured';
 
+  const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string>(categoryParam);
   const [sortBy, setSortBy] = useState<string>(sortParam);
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 1000]);
+
+  useEffect(() => {
+    setLoading(true);
+    const timer = setTimeout(() => setLoading(false), 300);
+    return () => clearTimeout(timer);
+  }, [categoryParam, sortBy]);
 
   useEffect(() => {
     if (categoryParam !== selectedCategory) {
@@ -117,7 +125,13 @@ export default function Products() {
 
         {/* Product Grid */}
         <div className="lg:col-span-3">
-          {filteredProducts.length === 0 ? (
+          {loading ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-3 gap-4 sm:gap-6">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <ProductSkeleton key={i} />
+              ))}
+            </div>
+          ) : filteredProducts.length === 0 ? (
             <div className="text-center py-20 bg-white rounded-3xl border border-app-border">
               <p className="text-base text-app-green font-bold mb-2">No products found</p>
               <p className="text-xs text-app-text-light mb-6">Try adjusting your filters or price range.</p>

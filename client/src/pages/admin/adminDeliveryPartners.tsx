@@ -43,17 +43,43 @@ export default function AdminDeliveryPartners() {
         }, 500);
     };
 
+    const handleApprove = async (id: string, newStatus: 'APPROVED' | 'REJECTED') => {
+        setPartners(prev => prev.map(p => {
+            if (p._id === id) {
+                return {
+                    ...p,
+                    status: newStatus,
+                    isActive: newStatus === 'APPROVED',
+                };
+            }
+            return p;
+        }));
+        toast.success(newStatus === 'APPROVED' ? "Partner approved & activated!" : "Partner registration rejected");
+    };
+
     const toggleActive = async (id: string, isActive: boolean) => {
-        console.log(id, isActive);
+        setPartners(prev => prev.map(p => (p._id === id ? { ...p, isActive: !isActive } : p)));
+        toast.success(`Partner ${!isActive ? "activated" : "deactivated"}`);
     };
 
     if (loading) return <Loading />;
 
+    const pendingCount = partners.filter(p => p.status === 'PENDING').length;
+
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-between">
-                <h1 className="text-xl font-semibold text-zinc-900">Delivery Partners</h1>
-                <button onClick={() => setShowForm(true)} className="px-4 py-2 bg-app-green text-white text-sm font-semibold rounded-xl hover:bg-app-green-light transition-colors flex items-center gap-2">
+            <div className="flex items-center justify-between flex-wrap gap-3">
+                <div>
+                    <h1 className="text-xl font-semibold text-zinc-900">Delivery Partners</h1>
+                    <p className="text-xs text-zinc-500 mt-0.5">
+                        {pendingCount > 0 ? (
+                            <span className="text-app-orange font-medium">{pendingCount} pending approval request(s)</span>
+                        ) : (
+                            "All partner accounts up to date"
+                        )}
+                    </p>
+                </div>
+                <button onClick={() => setShowForm(true)} className="px-4 py-2 bg-app-green text-white text-sm font-semibold rounded-xl hover:bg-app-green-light transition-colors flex items-center gap-2 cursor-pointer">
                     <PlusIcon className="size-4" /> Add Partner
                 </button>
             </div>
@@ -67,31 +93,69 @@ export default function AdminDeliveryPartners() {
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                    {partners.map((p) => (
-                        <div key={p._id} className="bg-white rounded-2xl border border-app-border p-5 space-y-3">
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <div className="size-10 rounded-full bg-app-green flex-center">
-                                        <span className="text-white font-semibold text-sm">{p.name.charAt(0)}</span>
+                    {partners.map((p) => {
+                        const isPending = p.status === 'PENDING';
+                        return (
+                            <div key={p._id} className="bg-white rounded-2xl border border-app-border p-5 space-y-3 shadow-xs">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <div className="size-10 rounded-full bg-app-green flex-center">
+                                            <span className="text-white font-semibold text-sm">{p.name.charAt(0)}</span>
+                                        </div>
+                                        <div>
+                                            <p className="font-semibold text-zinc-900 text-sm">{p.name}</p>
+                                            <p className="text-xs text-zinc-500 capitalize">{p.vehicleType}</p>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <p className="font-semibold text-zinc-900 text-sm">{p.name}</p>
-                                        <p className="text-xs text-zinc-500 capitalize">{p.vehicleType}</p>
+                                    <div className="flex flex-col items-end gap-1">
+                                        <span className={`px-2.5 py-0.5 text-[10px] font-semibold rounded-full ${
+                                            isPending
+                                                ? "bg-amber-100 text-amber-800"
+                                                : p.isActive
+                                                ? "bg-green-100 text-green-700"
+                                                : "bg-red-100 text-red-700"
+                                        }`}>
+                                            {isPending ? "Pending Approval" : p.isActive ? "Active" : "Inactive"}
+                                        </span>
                                     </div>
                                 </div>
-                                <span className={`px-2.5 py-1 text-[10px] font-semibold rounded-full ${p.isActive ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
-                                    {p.isActive ? "Active" : "Inactive"}
-                                </span>
+                                <div className="space-y-1.5 text-sm text-zinc-600">
+                                    <p className="flex items-center gap-2"><MailIcon className="w-3.5 h-3.5 text-zinc-400" /> {p.email}</p>
+                                    <p className="flex items-center gap-2"><PhoneIcon className="w-3.5 h-3.5 text-zinc-400" /> {p.phone}</p>
+                                </div>
+
+                                {isPending ? (
+                                    <div className="pt-2 border-t border-app-border grid grid-cols-2 gap-2">
+                                        <button
+                                            onClick={() => handleApprove(p._id, 'APPROVED')}
+                                            className="w-full py-2 text-xs font-semibold rounded-lg bg-app-green text-white hover:bg-app-green-light transition-colors cursor-pointer"
+                                        >
+                                            Approve
+                                        </button>
+                                        <button
+                                            onClick={() => handleApprove(p._id, 'REJECTED')}
+                                            className="w-full py-2 text-xs font-semibold rounded-lg bg-zinc-100 text-zinc-600 hover:bg-red-50 hover:text-red-600 transition-colors cursor-pointer"
+                                        >
+                                            Reject
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div className="pt-2 border-t border-app-border">
+                                        <button
+                                            onClick={() => toggleActive(p._id, p.isActive)}
+                                            className={`w-full py-2 text-xs font-medium rounded-lg transition-colors cursor-pointer ${
+                                                p.isActive
+                                                    ? "bg-red-50 text-red-600 hover:bg-red-100"
+                                                    : "bg-green-50 text-green-600 hover:bg-green-100"
+                                            }`}
+                                        >
+                                            {p.isActive ? "Deactivate" : "Activate"}
+                                        </button>
+                                    </div>
+                                )}
                             </div>
-                            <div className="space-y-1.5 text-sm text-zinc-600">
-                                <p className="flex items-center gap-2"><MailIcon className="w-3.5 h-3.5 text-zinc-400" /> {p.email}</p>
-                                <p className="flex items-center gap-2"><PhoneIcon className="w-3.5 h-3.5 text-zinc-400" /> {p.phone}</p>
-                            </div>
-                            <button onClick={() => toggleActive(p._id, p.isActive)} className={`w-full py-2 text-xs font-medium rounded-lg transition-colors ${p.isActive ? "bg-red-50 text-red-600 hover:bg-red-100" : "bg-green-50 text-green-600 hover:bg-green-100"}`}>
-                                {p.isActive ? "Deactivate" : "Activate"}
-                            </button>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
             )}
 

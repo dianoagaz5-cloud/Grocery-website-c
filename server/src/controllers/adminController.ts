@@ -158,6 +158,7 @@ export const getAllDeliveryPartners = async (req: Request, res: Response) => {
         avatar: true,
         vehicleType: true,
         isActive: true,
+        status: true,
         createdAt: true,
       },
     });
@@ -191,15 +192,40 @@ export const createDeliveryPartner = async (req: Request, res: Response) => {
         password: hashedPassword,
         phone,
         vehicleType: vehicleType || 'bike',
-        isActive: true,
+        isActive: false,
+        status: 'PENDING',
       },
     });
 
     const { password: _, ...partnerWithoutPassword } = partner;
     return res.status(201).json({
       success: true,
-      message: 'Delivery partner registered',
+      message: 'Delivery partner registered with PENDING status',
       partner: { ...partnerWithoutPassword, _id: partner.id },
+    });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const approveDeliveryPartner = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body; // 'APPROVED' or 'REJECTED'
+
+    const isApproved = status === 'APPROVED';
+    const partner = await prisma.deliveryPartner.update({
+      where: { id },
+      data: {
+        status: isApproved ? 'APPROVED' : 'REJECTED',
+        isActive: isApproved,
+      },
+    });
+
+    return res.json({
+      success: true,
+      message: `Partner status updated to ${partner.status}`,
+      partner: { ...partner, _id: partner.id },
     });
   } catch (error: any) {
     return res.status(500).json({ success: false, message: error.message });
