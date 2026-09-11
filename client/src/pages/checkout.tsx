@@ -8,6 +8,7 @@ import { dummyAddressData } from '../assets/assets';
 import CheckoutAddress from '../components/checkout/checkoutAddress';
 import CheckoutPayment from '../components/checkout/checkoutPayment';
 import CheckoutReview from '../components/checkout/checkoutReview';
+import api from '../config/api';
 import type { Address, Order } from '../types';
 
 export default function Checkout() {
@@ -75,33 +76,55 @@ export default function Checkout() {
     );
   }
 
-  const handlePlaceOrder = () => {
+  const handlePlaceOrder = async () => {
     setLoading(true);
 
-    setTimeout(() => {
+    const payloadItems = items.map((item) => ({
+      product: item.product._id,
+      name: item.product.name,
+      image: item.product.image,
+      price: item.product.price,
+      quantity: item.quantity,
+      unit: item.product.unit,
+    }));
+
+    const payloadShipping = {
+      label: resolvedAddress.label,
+      address: resolvedAddress.address,
+      city: resolvedAddress.city,
+      state: resolvedAddress.state,
+      zip: resolvedAddress.zip,
+      lat: resolvedAddress.lat || 40.7128,
+      lng: resolvedAddress.lng || -74.006,
+    };
+
+    let targetOrderId = '';
+
+    try {
+      // 1. Try real backend API
+      const { data } = await api.post('/api/orders', {
+        items: payloadItems,
+        shippingAddress: payloadShipping,
+        paymentMethod,
+      });
+
+      if (data.success && data.order) {
+        targetOrderId = data.order._id || data.order.id;
+        // Save to local cache as well so user sees it right away
+        const existingJson = localStorage.getItem('instamart_orders');
+        const existing: Order[] = existingJson ? JSON.parse(existingJson) : [];
+        localStorage.setItem('instamart_orders', JSON.stringify([{ ...data.order, _id: targetOrderId }, ...existing]));
+      }
+    } catch {
+      // Fallback local simulation if user not logged in or backend offline
       const newOrderId = 'ord_' + Math.random().toString(36).substring(2, 9);
       const randomOtp = Math.floor(100000 + Math.random() * 900000).toString();
 
       const newOrder: Order = {
         _id: newOrderId,
         user: user ? user._id : 'guest_user',
-        items: items.map((item) => ({
-          product: item.product._id,
-          name: item.product.name,
-          image: item.product.image,
-          price: item.product.price,
-          quantity: item.quantity,
-          unit: item.product.unit,
-        })),
-        shippingAddress: {
-          label: resolvedAddress.label,
-          address: resolvedAddress.address,
-          city: resolvedAddress.city,
-          state: resolvedAddress.state,
-          zip: resolvedAddress.zip,
-          lat: resolvedAddress.lat || 40.7128,
-          lng: resolvedAddress.lng || -74.006,
-        },
+        items: payloadItems,
+        shippingAddress: payloadShipping,
         paymentMethod,
         subtotal,
         deliveryFee,
@@ -127,16 +150,16 @@ export default function Checkout() {
         createdAt: new Date().toISOString(),
       };
 
-      // Save to localStorage
       const existingJson = localStorage.getItem('instamart_orders');
       const existing: Order[] = existingJson ? JSON.parse(existingJson) : [];
       localStorage.setItem('instamart_orders', JSON.stringify([newOrder, ...existing]));
-
+      targetOrderId = newOrderId;
+    } finally {
       clearCart();
       setLoading(false);
       toast.success('Order placed successfully!');
-      navigate(`/orders/${newOrderId}`);
-    }, 1200);
+      navigate(`/orders/${targetOrderId}`);
+    }
   };
 
   const steps = [

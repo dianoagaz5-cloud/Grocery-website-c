@@ -5,6 +5,8 @@ import Loading from "../../components/loading";
 import toast from "react-hot-toast";
 import { dummyDeliveryPartnerData } from "../../assets/assets";
 
+import api from "../../config/api";
+
 export default function AdminDeliveryPartners() {
     const [partners, setPartners] = useState<DeliveryPartner[]>([]);
     const [loading, setLoading] = useState(true);
@@ -13,8 +15,18 @@ export default function AdminDeliveryPartners() {
     const [form, setForm] = useState({ name: "", email: "", password: "", phone: "", vehicleType: "bike" });
 
     const fetchPartners = async () => {
-        setPartners(dummyDeliveryPartnerData as any)
-        setTimeout(() => setLoading(false), 1000)
+        try {
+            const { data } = await api.get('/api/admin/delivery-partners');
+            if (data.success && Array.isArray(data.partners)) {
+                setPartners(data.partners);
+            } else {
+                setPartners(dummyDeliveryPartnerData as any);
+            }
+        } catch {
+            setPartners(dummyDeliveryPartnerData as any);
+        } finally {
+            setLoading(false);
+        }
     };
 
     useEffect(() => {
@@ -24,42 +36,51 @@ export default function AdminDeliveryPartners() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setSaving(true);
-        setTimeout(() => {
-            const newPartner: DeliveryPartner = {
-                _id: 'part_' + Date.now(),
-                name: form.name,
-                email: form.email,
-                phone: form.phone,
-                avatar: '',
-                vehicleType: form.vehicleType as 'bike' | 'scooter' | 'car',
-                isActive: true,
-                createdAt: new Date().toISOString(),
-            };
-            setPartners(prev => [newPartner, ...prev]);
-            setSaving(false);
+        try {
+            const { data } = await api.post('/api/admin/delivery-partners', form);
+            if (data.success && data.partner) {
+                setPartners(prev => [data.partner, ...prev]);
+            }
+            toast.success("Partner onboarded successfully");
             setShowForm(false);
             setForm({ name: "", email: "", password: "", phone: "", vehicleType: "bike" });
-            toast.success("Partner added successfully");
-        }, 500);
+        } catch (err: any) {
+            const msg = err?.response?.data?.message || 'Failed to create delivery partner';
+            toast.error(msg);
+        } finally {
+            setSaving(false);
+        }
     };
 
     const handleApprove = async (id: string, newStatus: 'APPROVED' | 'REJECTED') => {
-        setPartners(prev => prev.map(p => {
-            if (p._id === id) {
-                return {
-                    ...p,
-                    status: newStatus,
-                    isActive: newStatus === 'APPROVED',
-                };
-            }
-            return p;
-        }));
-        toast.success(newStatus === 'APPROVED' ? "Partner approved & activated!" : "Partner registration rejected");
+        try {
+            await api.patch(`/api/admin/delivery-partners/${id}/approve`, { status: newStatus });
+            setPartners(prev => prev.map(p => {
+                if (p._id === id) {
+                    return {
+                        ...p,
+                        status: newStatus,
+                        isActive: newStatus === 'APPROVED',
+                    };
+                }
+                return p;
+            }));
+            toast.success(newStatus === 'APPROVED' ? "Partner approved & activated!" : "Partner registration rejected");
+        } catch (err: any) {
+            const msg = err?.response?.data?.message || 'Failed to update partner approval';
+            toast.error(msg);
+        }
     };
 
     const toggleActive = async (id: string, isActive: boolean) => {
-        setPartners(prev => prev.map(p => (p._id === id ? { ...p, isActive: !isActive } : p)));
-        toast.success(`Partner ${!isActive ? "activated" : "deactivated"}`);
+        try {
+            await api.patch(`/api/admin/delivery-partners/${id}/toggle`);
+            setPartners(prev => prev.map(p => (p._id === id ? { ...p, isActive: !isActive } : p)));
+            toast.success(`Partner ${!isActive ? "activated" : "deactivated"}`);
+        } catch (err: any) {
+            const msg = err?.response?.data?.message || 'Failed to toggle status';
+            toast.error(msg);
+        }
     };
 
     if (loading) return <Loading />;

@@ -4,6 +4,8 @@ import { PackageIcon, ChevronRightIcon, ClockIcon } from 'lucide-react';
 import { dummyDashboardOrdersData, statusColors } from '../assets/assets';
 import type { Order } from '../types';
 
+import api from '../config/api';
+
 type FilterTab = 'all' | 'placed' | 'out_for_delivery' | 'delivered';
 
 export default function MyOrders() {
@@ -12,22 +14,33 @@ export default function MyOrders() {
   const currency = import.meta.env.VITE_CURRENCY_SYMBOL || '$';
 
   useEffect(() => {
-    // Load local stored orders + dummy orders
-    const localOrdersJson = localStorage.getItem('instamart_orders');
-    const localOrders: Order[] = localOrdersJson ? JSON.parse(localOrdersJson) : [];
-    
-    // Combine local placed orders with dummy sample orders
-    const combined = [...localOrders, ...(dummyDashboardOrdersData as unknown as Order[])];
-    
-    // Deduplicate by _id
-    const seen = new Set<string>();
-    const unique = combined.filter((order) => {
-      if (seen.has(order._id)) return false;
-      seen.add(order._id);
-      return true;
-    });
+    const fetchUserOrders = async () => {
+      let serverOrders: Order[] = [];
+      try {
+        const { data } = await api.get('/api/orders/my-orders');
+        if (data.success && Array.isArray(data.orders)) {
+          serverOrders = data.orders;
+        }
+      } catch {
+        // user not authenticated or network error
+      }
 
-    setOrders(unique);
+      const localOrdersJson = localStorage.getItem('instamart_orders');
+      const localOrders: Order[] = localOrdersJson ? JSON.parse(localOrdersJson) : [];
+      
+      const combined = [...serverOrders, ...localOrders, ...(dummyDashboardOrdersData as unknown as Order[])];
+      
+      const seen = new Set<string>();
+      const unique = combined.filter((order) => {
+        if (seen.has(order._id)) return false;
+        seen.add(order._id);
+        return true;
+      });
+
+      setOrders(unique);
+    };
+
+    fetchUserOrders();
   }, []);
 
   const filteredOrders = orders.filter((order) => {

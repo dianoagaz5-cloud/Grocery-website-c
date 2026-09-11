@@ -4,6 +4,8 @@ import { BikeIcon } from "lucide-react";
 import toast from "react-hot-toast";
 import { heroSectionData } from "../../assets/assets";
 
+import api from "../../config/api";
+
 export default function DeliveryLogin() {
     const navigate = useNavigate();
     const [email, setEmail] = useState("");
@@ -13,11 +15,20 @@ export default function DeliveryLogin() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
-        setTimeout(() => {
-            setLoading(false);
-            toast.success("Welcome back!");
+        try {
+            const { data } = await api.post('/api/delivery/login', { email, password });
+            if (data.token) {
+                localStorage.setItem('delivery_token', data.token);
+                localStorage.setItem('delivery_partner', JSON.stringify(data.partner));
+            }
+            toast.success(`Welcome back, ${data.partner?.name || 'Partner'}!`);
             navigate("/delivery/dashboard");
-        }, 500);
+        } catch (err: any) {
+            const msg = err?.response?.data?.message || 'Invalid credentials or account inactive';
+            toast.error(msg);
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (

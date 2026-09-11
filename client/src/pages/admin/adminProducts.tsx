@@ -5,6 +5,9 @@ import type { Product } from "../../types";
 import Loading from "../../components/loading";
 import { dummyProducts } from "../../assets/assets";
 
+import api from "../../config/api";
+import toast from "react-hot-toast";
+
 export default function AdminProducts() {
 
     const currency = import.meta.env.VITE_CURRENCY_SYMBOL || "$";
@@ -13,10 +16,18 @@ export default function AdminProducts() {
     const [loading, setLoading] = useState(true);
 
     const fetchProducts = async () => {
-        setProducts(dummyProducts);
-        setTimeout(() => {
+        try {
+            const { data } = await api.get('/api/products');
+            if (data.success && Array.isArray(data.products)) {
+                setProducts(data.products);
+            } else {
+                setProducts(dummyProducts);
+            }
+        } catch {
+            setProducts(dummyProducts);
+        } finally {
             setLoading(false);
-        }, 1000);
+        }
     };
 
     useEffect(() => {
@@ -25,7 +36,14 @@ export default function AdminProducts() {
 
     const handleMarkOutOfStock = async (id: string, name: string) => {
         if (!window.confirm(`Are you sure you want to mark "${name}" as out of stock?`)) return;
-        console.log(id);
+        try {
+            await api.put(`/api/products/${id}`, { stock: 0 });
+            setProducts((prev) => prev.map((p) => (p._id === id ? { ...p, stock: 0 } : p)));
+            toast.success(`"${name}" marked as out of stock`);
+        } catch (err: any) {
+            const msg = err?.response?.data?.message || 'Failed to update stock';
+            toast.error(msg);
+        }
     };
 
     if (loading) return <Loading />

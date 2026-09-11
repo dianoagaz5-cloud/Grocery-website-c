@@ -5,6 +5,7 @@ import { dummyDashboardOrdersData, statusColors } from '../assets/assets';
 import LiveMap from '../components/orderTracking/liveMap';
 import OrderTimeLine from '../components/orderTracking/orderTimeline';
 import OrderOTP from '../components/orderTracking/orderOTP';
+import api from '../config/api';
 import type { Order } from '../types';
 
 export default function OrderTracking() {
@@ -15,25 +16,54 @@ export default function OrderTracking() {
   const currency = import.meta.env.VITE_CURRENCY_SYMBOL || '$';
 
   useEffect(() => {
-    // 1. Check local storage orders
-    const localOrdersJson = localStorage.getItem('instamart_orders');
-    const localOrders: Order[] = localOrdersJson ? JSON.parse(localOrdersJson) : [];
+    let isMounted = true;
 
-    const found =
-      localOrders.find((o) => o._id === id) ||
-      ((dummyDashboardOrdersData as unknown as Order[]).find((o) => o._id === id) ?? null);
-
-    if (found) {
-      setOrder(found);
-      if ((found as any).liveLocation) {
-        setLiveLocation((found as any).liveLocation);
-      } else if (found.shippingAddress?.lat) {
-        setLiveLocation({
-          lat: found.shippingAddress.lat + 0.003,
-          lng: found.shippingAddress.lng + 0.003,
-        });
+    const fetchOrderDetails = async () => {
+      try {
+        const { data } = await api.get(`/api/orders/${id}`);
+        if (data.success && data.order && isMounted) {
+          setOrder(data.order);
+          if (data.order.liveLocation) {
+            setLiveLocation(data.order.liveLocation);
+          } else if (data.order.shippingAddress?.lat) {
+            setLiveLocation({
+              lat: data.order.shippingAddress.lat + 0.003,
+              lng: data.order.shippingAddress.lng + 0.003,
+            });
+          }
+          return;
+        }
+      } catch {
+        // Fallback to local storage or dummy data
       }
-    }
+
+      const localOrdersJson = localStorage.getItem('instamart_orders');
+      const localOrders: Order[] = localOrdersJson ? JSON.parse(localOrdersJson) : [];
+      const found =
+        localOrders.find((o) => o._id === id) ||
+        ((dummyDashboardOrdersData as unknown as Order[]).find((o) => o._id === id) ?? null);
+
+      if (found && isMounted) {
+        setOrder(found);
+        if ((found as any).liveLocation) {
+          setLiveLocation((found as any).liveLocation);
+        } else if (found.shippingAddress?.lat) {
+          setLiveLocation({
+            lat: found.shippingAddress.lat + 0.003,
+            lng: found.shippingAddress.lng + 0.003,
+          });
+        }
+      }
+    };
+
+    fetchOrderDetails();
+    // Poll every 4 seconds for live status changes from Admin / Delivery
+    const interval = setInterval(fetchOrderDetails, 4000);
+
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
   }, [id]);
 
   if (!order) {

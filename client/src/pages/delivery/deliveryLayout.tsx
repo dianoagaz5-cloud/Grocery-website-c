@@ -2,17 +2,28 @@ import { Outlet, useNavigate } from "react-router-dom";
 import { LogOutIcon, TruckIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { DeliveryPartner } from "../../types";
-import { dummyDeliveryPartnerData } from "../../assets/assets";
 
 export default function DeliveryLayout() {
     const navigate = useNavigate();
     const [partner, setPartner] = useState<DeliveryPartner | null>(null);
 
     useEffect(() => {
-        setPartner(dummyDeliveryPartnerData[0] as DeliveryPartner);
+        const stored = localStorage.getItem('delivery_partner');
+        const token = localStorage.getItem('delivery_token');
+        if (!token || !stored) {
+            navigate("/delivery/login", { replace: true });
+            return;
+        }
+        try {
+            setPartner(JSON.parse(stored));
+        } catch {
+            navigate("/delivery/login", { replace: true });
+        }
     }, [navigate]);
 
     const handleLogout = () => {
+        localStorage.removeItem('delivery_token');
+        localStorage.removeItem('delivery_partner');
         navigate("/delivery/login");
     };
 

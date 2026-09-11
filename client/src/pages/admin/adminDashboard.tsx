@@ -4,6 +4,8 @@ import { PackageIcon, UsersIcon, ShoppingBagIcon, AlertTriangleIcon } from "luci
 import Loading from "../../components/loading";
 import { dummyAdminDashboardData, statusColors } from "../../assets/assets";
 
+import api from "../../config/api";
+
 interface Stats {
     totalOrders: number;
     totalUsers: number;
@@ -20,10 +22,27 @@ export default function AdminDashboard() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        setTimeout(() => {
-            setStats(dummyAdminDashboardData);
-            setLoading(false);
-        }, 1000);
+        const fetchStats = async () => {
+            try {
+                const { data } = await api.get('/api/admin/stats');
+                if (data.success && data.stats) {
+                    setStats({
+                        totalOrders: data.stats.totalOrders || 0,
+                        totalUsers: data.stats.totalUsers || 0,
+                        totalProducts: data.stats.totalProducts || 0,
+                        outOfStock: data.lowStockProducts ? data.lowStockProducts.length : 0,
+                        recentOrders: data.recentOrders || [],
+                    });
+                } else {
+                    setStats(dummyAdminDashboardData);
+                }
+            } catch {
+                setStats(dummyAdminDashboardData);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchStats();
     }, []);
 
     const cards = stats

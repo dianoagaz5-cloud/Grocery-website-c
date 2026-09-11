@@ -3,6 +3,7 @@ import { TruckIcon } from "lucide-react";
 import toast from "react-hot-toast";
 import type { DeliveryPartner } from "../../types";
 import Loading from "../../components/loading";
+import api from "../../config/api";
 import { dummyDashboardOrdersData, dummyDeliveryPartnerData } from "../../assets/assets";
 
 export default function AdminOrders() {
@@ -16,13 +17,33 @@ export default function AdminOrders() {
     const [selectedPartner, setSelectedPartner] = useState("");
 
     const fetchOrders = async () => {
-        setOrders(dummyDashboardOrdersData)
-        setTimeout(() => setLoading(false), 1000)
+        try {
+            const { data } = await api.get('/api/admin/orders');
+            if (data.success && Array.isArray(data.orders)) {
+                setOrders(data.orders);
+            } else {
+                setOrders(dummyDashboardOrdersData);
+            }
+        } catch {
+            setOrders(dummyDashboardOrdersData);
+        } finally {
+            setLoading(false);
+        }
     };
 
     const fetchPartners = async () => {
-        setPartners(dummyDeliveryPartnerData as any)
-        setTimeout(() => setLoading(false), 1000)
+        try {
+            const { data } = await api.get('/api/admin/delivery-partners');
+            if (data.success && Array.isArray(data.partners)) {
+                // Filter active & approved partners for assignment
+                const activeOnes = data.partners.filter((p: any) => p.isActive && p.status !== 'REJECTED');
+                setPartners(activeOnes);
+            } else {
+                setPartners(dummyDeliveryPartnerData as any);
+            }
+        } catch {
+            setPartners(dummyDeliveryPartnerData as any);
+        }
     };
 
     useEffect(() => {
@@ -31,14 +52,36 @@ export default function AdminOrders() {
     }, []);
 
     const handleStatusChange = async (id: string, newStatus: string) => {
-        console.log(id, newStatus);
+        try {
+            await api.put(`/api/admin/orders/${id}/status`, { status: newStatus });
+            toast.success(`Status updated to ${newStatus}`);
+            setOrders((prev) => prev.map((o) => o._id === id ? { ...o, status: newStatus } : o));
+        } catch (err: any) {
+            const msg = err?.response?.data?.message || 'Failed to update order status';
+            toast.error(msg);
+            setOrders((prev) => prev.map((o) => o._id === id ? { ...o, status: newStatus } : o));
+        }
     };
 
     const handleAssign = async () => {
         if (!assignModal || !selectedPartner) return;
-        toast.success("Delivery partner assigned!");
-        setAssignModal(null);
-        setSelectedPartner("");
+        try {
+            const { data } = await api.put(`/api/admin/orders/${assignModal}/assign`, {
+                deliveryPartnerId: selectedPartner,
+            });
+            const assignedPartner = partners.find(p => p._id === selectedPartner);
+            toast.success(data?.message || "Delivery partner assigned!");
+            setOrders((prev) => prev.map((o) => o._id === assignModal ? {
+                ...o,
+                status: 'Assigned',
+                deliveryPartner: assignedPartner || o.deliveryPartner,
+            } : o));
+            setAssignModal(null);
+            setSelectedPartner("");
+        } catch (err: any) {
+            const msg = err?.response?.data?.message || 'Failed to assign partner';
+            toast.error(msg);
+        }
     };
 
     const statusOptions = ["Placed", "Confirmed", "Assigned", "Packed", "Out for Delivery", "Delivered", "Cancelled"];

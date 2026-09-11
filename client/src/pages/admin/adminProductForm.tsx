@@ -4,6 +4,7 @@ import { ArrowLeftIcon } from "lucide-react";
 import { categoriesData, dummyProducts } from "../../assets/assets";
 import Loading from "../../components/loading";
 import toast from "react-hot-toast";
+import api from "../../config/api";
 
 export default function AdminProductForm() {
     const { id } = useParams();
@@ -27,10 +28,29 @@ export default function AdminProductForm() {
 
     useEffect(() => {
         const fetchData = async () => {
-            if (isEdit) {
-                setFormData(() => dummyProducts.find((p) => p._id === id) as any)
+            if (isEdit && id) {
+                try {
+                    const { data } = await api.get(`/api/products/${id}`);
+                    if (data.success && data.product) {
+                        setFormData({
+                            name: data.product.name || "",
+                            description: data.product.description || "",
+                            price: String(data.product.price || ""),
+                            originalPrice: String(data.product.originalPrice || ""),
+                            image: data.product.image || "",
+                            category: data.product.category || "",
+                            unit: data.product.unit || "piece",
+                            stock: String(data.product.stock || "0"),
+                            isOrganic: Boolean(data.product.isOrganic),
+                        });
+                    } else {
+                        setFormData(() => (dummyProducts.find((p) => p._id === id) as any) || {});
+                    }
+                } catch {
+                    setFormData(() => (dummyProducts.find((p) => p._id === id) as any) || {});
+                }
             }
-            setLoading(false)
+            setLoading(false);
         };
         fetchData();
     }, [id, isEdit]);
@@ -38,10 +58,27 @@ export default function AdminProductForm() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setSaving(true);
-        setTimeout(() => {
+        try {
+            const payload = {
+                ...formData,
+                price: parseFloat(formData.price) || 0,
+                originalPrice: parseFloat(formData.originalPrice) || 0,
+                stock: parseInt(formData.stock, 10) || 0,
+            };
+
+            if (isEdit && id) {
+                await api.put(`/api/products/${id}`, payload);
+                toast.success("Product updated successfully");
+            } else {
+                await api.post('/api/products', payload);
+                toast.success("Product created successfully");
+            }
+        } catch (err: any) {
+            const msg = err?.response?.data?.message || 'Failed to save product';
+            toast.error(msg);
+        } finally {
             setSaving(false);
-            toast.success(isEdit ? "Product updated successfully" : "Product created successfully");
-        }, 500);
+        }
     };
 
     return (

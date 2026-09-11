@@ -6,9 +6,12 @@ const api = axios.create({
   withCredentials: true,
 });
 
-// Attach JWT token on every request
+// Attach JWT token (user or delivery partner) on every request
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
+  const isDelivery = config.url?.startsWith('/api/delivery');
+  const token = isDelivery
+    ? (localStorage.getItem('delivery_token') || localStorage.getItem('token'))
+    : localStorage.getItem('token');
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
@@ -18,9 +21,20 @@ api.interceptors.response.use(
   (res) => res,
   (err) => {
     if (err.response?.status === 401) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      window.location.href = '/login';
+      const isDeliveryUrl = window.location.pathname.startsWith('/delivery');
+      if (isDeliveryUrl) {
+        localStorage.removeItem('delivery_token');
+        localStorage.removeItem('delivery_partner');
+        if (window.location.pathname !== '/delivery/login') {
+          window.location.href = '/delivery/login';
+        }
+      } else {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        if (window.location.pathname !== '/login') {
+          window.location.href = '/login';
+        }
+      }
     }
     return Promise.reject(err);
   }

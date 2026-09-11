@@ -7,6 +7,9 @@ import Loading from "../../components/loading";
 import type { Order } from "../../types";
 import { dummyDashboardOrdersData } from "../../assets/assets";
 
+import api from "../../config/api";
+import toast from "react-hot-toast";
+
 export default function DeliveryDashboard() {
 
     const [orders, setOrders] = useState<Order[]>([]);
@@ -25,8 +28,18 @@ export default function DeliveryDashboard() {
 
     const fetchOrders = async () => {
         setLoading(true);
-        setOrders(dummyDashboardOrdersData as any);
-        setLoading(false);
+        try {
+            const { data } = await api.get('/api/delivery/deliveries');
+            if (data.success && Array.isArray(data.orders)) {
+                setOrders(data.orders);
+            } else {
+                setOrders(dummyDashboardOrdersData as any);
+            }
+        } catch {
+            setOrders(dummyDashboardOrdersData as any);
+        } finally {
+            setLoading(false);
+        }
     };
 
     useEffect(() => {
@@ -34,28 +47,54 @@ export default function DeliveryDashboard() {
     }, [tab]);
 
     const handleUpdateStatus = async (orderId: string, status: string) => {
-        console.log(orderId, status);
+        try {
+            await api.put(`/api/delivery/deliveries/${orderId}/status`, { status });
+            toast.success(`Order status updated to ${status}`);
+            setOrders((prev) => prev.map((o) => o._id === orderId ? { ...o, status } : o));
+        } catch (err: any) {
+            const msg = err?.response?.data?.message || 'Failed to update status';
+            toast.error(msg);
+            // Optimistic update fallback in case running offline
+            setOrders((prev) => prev.map((o) => o._id === orderId ? { ...o, status } : o));
+        }
     };
 
     const handleComplete = async () => {
         if (!otpModal || !otp) return;
         setSubmitting(true);
-        setTimeout(() => {
-            setSubmitting(false);
+        try {
+            await api.post(`/api/delivery/deliveries/${otpModal}/complete`, { otp });
+            toast.success("Delivery confirmed with OTP!");
+            setOrders((prev) => prev.map((o) => o._id === otpModal ? { ...o, status: 'Delivered', isPaid: true } : o));
             setOtpModal(null);
             setOtp("");
-        }, 1000);
+        } catch (err: any) {
+            const msg = err?.response?.data?.message || 'Incorrect OTP code';
+            toast.error(msg);
+        } finally {
+            setSubmitting(false);
+        }
     };
 
     const handleCancel = async () => {
         if (!cancelModal) return;
         setSubmitting(true);
-        setTimeout(() => {
-            setSubmitting(false);
+        try {
+            await api.put(`/api/delivery/deliveries/${cancelModal}/status`, {
+                status: 'Cancelled',
+                note: cancelReason || 'Cancelled by delivery partner',
+            });
+            toast.success("Order marked as cancelled");
+            setOrders((prev) => prev.map((o) => o._id === cancelModal ? { ...o, status: 'Cancelled' } : o));
             setCancelModal(null);
             setCancelReason("");
-        }, 1000);
-    }
+        } catch (err: any) {
+            const msg = err?.response?.data?.message || 'Failed to cancel order';
+            toast.error(msg);
+        } finally {
+            setSubmitting(false);
+        }
+    };
 
     return (
         <div className="space-y-6">
