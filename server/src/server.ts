@@ -31,7 +31,7 @@ app.use(helmet({
 // ─── CORS — strict origin from env ────────────────────────────────────────────
 const allowedOrigins = (process.env.FRONTEND_URL || 'http://localhost:5173').split(',').map((o) => o.trim());
 app.use(cors({
-  origin: (origin, callback) => {
+  origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
     // Allow requests with no origin (e.g., curl, Postman in dev) and listed origins
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
