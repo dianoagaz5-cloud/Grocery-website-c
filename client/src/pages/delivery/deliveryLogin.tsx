@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { BikeIcon } from "lucide-react";
+import { useNavigate, Link } from "react-router-dom";
+import { BikeIcon, ArrowLeftIcon } from "lucide-react";
 import toast from "react-hot-toast";
 import { heroSectionData } from "../../assets/assets";
 
@@ -32,7 +32,17 @@ export default function DeliveryLogin() {
     };
 
     return (
-        <div className="min-h-screen flex">
+        <div className="min-h-screen flex relative">
+            {/* Back to Home Button in the top-left corner */}
+            <Link
+                to="/"
+                className="absolute top-5 left-5 z-50 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/90 lg:bg-[#1b3022]/80 backdrop-blur-md text-app-green lg:text-white text-xs font-semibold hover:bg-white lg:hover:bg-[#1b3022] shadow-sm border border-app-border/40 transition-all"
+                title="Return to Home"
+            >
+                <ArrowLeftIcon className="size-4" />
+                <span>Back to Home</span>
+            </Link>
+
             {/* Left Side */}
             <div className="hidden lg:flex lg:w-1/2 bg-app-green relative items-center justify-center">
                 <img src={heroSectionData.hero_image} alt="" className="absolute inset-0 object-cover h-full bg-center opacity-10" />

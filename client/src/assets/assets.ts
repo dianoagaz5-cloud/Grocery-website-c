@@ -68,7 +68,6 @@ export const footerData = {
                 { label: "Flash Deals", to: "/deals" },
                 { label: "Track Order", to: "/orders" },
                 { label: "Delivery Partner", to: "/delivery" },
-                { label: "Admin Portal", to: "/admin" },
             ],
         },
         {

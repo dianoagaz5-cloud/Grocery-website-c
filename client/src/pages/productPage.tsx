@@ -1,20 +1,47 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { StarIcon, ShieldCheckIcon, TruckIcon, ArrowLeftIcon, PlusIcon, MinusIcon } from 'lucide-react';
 import { dummyProducts } from '../assets/assets';
 import { useCart } from '../context/cartContext';
-import DummyReviewsSection from '../components/DummyReviewsSection';
+import ReviewsSection from '../components/ReviewsSection';
 import ProductCard from '../components/productCard';
 import type { Product } from '../types';
+import api from '../config/api';
 
 export default function ProductPage() {
   const { id } = useParams<{ id: string }>();
   const { items, addItem, updateQuantity } = useCart();
   const [qty, setQty] = useState<number>(1);
 
+  // Initialize from dummy if present, then dynamically fetch live DB product
+  const [product, setProduct] = useState<Product | undefined>(() =>
+    dummyProducts.find((p) => p._id === id || p.id === id) as Product | undefined
+  );
+  const [liveRating, setLiveRating] = useState<number>(product?.rating || 4.5);
+  const [liveReviewCount, setLiveReviewCount] = useState<number>(product?.reviewCount || 12);
+
   const currency = import.meta.env.VITE_CURRENCY_SYMBOL || '$';
 
-  const product = dummyProducts.find((p) => p._id === id || p.id === id) as Product | undefined;
+  useEffect(() => {
+    if (!id) return;
+    let isMounted = true;
+    api
+      .get(`/api/products/${id}`)
+      .then(({ data }) => {
+        if (isMounted && data.success && data.product) {
+          setProduct(data.product);
+          setLiveRating(data.product.rating || 4.5);
+          setLiveReviewCount(data.product.reviewCount || 12);
+        }
+      })
+      .catch(() => {
+        // keep fallback dummy product
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [id]);
 
   if (!product) {
     return (
@@ -89,14 +116,14 @@ export default function ProductPage() {
               {product.name}
             </h1>
 
-            {/* Rating */}
+            {/* Rating - dynamically synced with customer reviews */}
             <div className="flex items-center gap-2 mb-4">
               <div className="flex items-center gap-1 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200/50">
                 <StarIcon className="size-4 text-app-warning fill-app-warning" />
-                <span className="text-xs font-bold text-amber-800">{product.rating}</span>
+                <span className="text-xs font-bold text-amber-800">{liveRating.toFixed(1)}</span>
               </div>
               <span className="text-xs text-app-text-light">
-                ({product.reviewCount} customer reviews)
+                ({liveReviewCount} {liveReviewCount === 1 ? 'customer review' : 'customer reviews'})
               </span>
             </div>
 
@@ -192,8 +219,14 @@ export default function ProductPage() {
         </div>
       </div>
 
-      {/* Reviews Section */}
-      <DummyReviewsSection product={product} />
+      {/* Reviews Section — fully dynamic with star rating, add review and helpful reactions */}
+      <ReviewsSection
+        product={product}
+        onRatingUpdate={(avg, count) => {
+          setLiveRating(avg);
+          setLiveReviewCount(count);
+        }}
+      />
 
       {/* Similar Products */}
       {similarProducts.length > 0 && (

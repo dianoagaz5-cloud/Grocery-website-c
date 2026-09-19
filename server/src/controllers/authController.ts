@@ -21,7 +21,7 @@ function deriveRole(email: string): 'ADMIN' | 'CLIENT' {
 const cookieBase = {
   httpOnly: true,
   secure: IS_PROD,
-  sameSite: 'lax' as const,
+  sameSite: (IS_PROD ? 'none' : 'lax') as 'none' | 'lax',
   path: '/',
 };
 
@@ -56,11 +56,12 @@ export const register = async (req: Request, res: Response) => {
       include: { addresses: true },
     });
     const role = deriveRole(user.email);
-    await issueTokens(res, user.id, user.email, role);
+    const token = await issueTokens(res, user.id, user.email, role);
     const { password: _, ...userWithoutPassword } = user;
     return res.status(201).json({
       success: true,
       message: 'Account registered successfully',
+      token,
       user: { ...userWithoutPassword, _id: user.id, isAdmin: role === 'ADMIN' },
     });
   } catch (error: any) {
@@ -79,11 +80,12 @@ export const login = async (req: Request, res: Response) => {
       return res.status(401).json({ success: false, message: 'Invalid email or password' });
     }
     const role = deriveRole(user.email);
-    await issueTokens(res, user.id, user.email, role);
+    const token = await issueTokens(res, user.id, user.email, role);
     const { password: _, ...userWithoutPassword } = user;
     return res.json({
       success: true,
       message: 'Logged in successfully',
+      token,
       user: { ...userWithoutPassword, _id: user.id, isAdmin: role === 'ADMIN' },
     });
   } catch (error: any) {

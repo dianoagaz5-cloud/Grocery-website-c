@@ -18,11 +18,23 @@ export default function Login() {
     e.preventDefault();
     setLoading(true);
     try {
-      if (mode === 'login') await login(email, password);
-      else await register(name, email, password);
-      navigate('/');
+      if (mode === 'login') {
+        const user = await login(email, password);
+        if (user?.isAdmin) {
+          navigate('/admin');
+        } else {
+          navigate('/');
+        }
+      } else {
+        await register(name, email, password);
+        navigate('/');
+      }
     } catch (err: any) {
-      const msg = err?.response?.data?.message || 'Something went wrong';
+      const msg =
+        err?.response?.data?.message ||
+        (err?.message === 'Network Error'
+          ? 'Backend is waking up (Render free tier). Please retry in 10 seconds!'
+          : (err?.message || 'Login failed. Please check your credentials.'));
       import('react-hot-toast').then(({ default: toast }) => toast.error(msg));
     } finally {
       setLoading(false);

@@ -7,8 +7,8 @@ interface AuthContextType {
   user: User | null;
   token: string | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  register: (name: string, email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<User>;
+  register: (name: string, email: string, password: string) => Promise<User>;
   logout: () => void;
   updateUser: (data: Partial<User>) => void;
 }
@@ -32,20 +32,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (email: string, password: string) => {
     const { data } = await api.post('/api/auth/login', { email, password });
-    setToken(data.token);
-    setUser(data.user);
-    localStorage.setItem('token', data.token);
-    localStorage.setItem('user', JSON.stringify(data.user));
+    const userObj = {
+      ...data.user,
+      isAdmin: data.user.isAdmin ?? (data.user.email?.toLowerCase().includes('admin')),
+    };
+    if (data.token) {
+      setToken(data.token);
+      localStorage.setItem('token', data.token);
+    }
+    setUser(userObj);
+    localStorage.setItem('user', JSON.stringify(userObj));
     toast.success(`Welcome back, ${data.user.name}!`);
+    return userObj;
   };
 
   const register = async (name: string, email: string, password: string) => {
     const { data } = await api.post('/api/auth/register', { name, email, password });
-    setToken(data.token);
-    setUser(data.user);
-    localStorage.setItem('token', data.token);
-    localStorage.setItem('user', JSON.stringify(data.user));
+    const userObj = {
+      ...data.user,
+      isAdmin: data.user.isAdmin ?? (data.user.email?.toLowerCase().includes('admin')),
+    };
+    if (data.token) {
+      setToken(data.token);
+      localStorage.setItem('token', data.token);
+    }
+    setUser(userObj);
+    localStorage.setItem('user', JSON.stringify(userObj));
     toast.success('Account created!');
+    return userObj;
   };
 
   const logout = () => {

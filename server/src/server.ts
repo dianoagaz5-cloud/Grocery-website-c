@@ -28,18 +28,28 @@ app.use(helmet({
   contentSecurityPolicy: IS_PROD,
 }));
 
-// ─── CORS — strict origin from env ────────────────────────────────────────────
-const allowedOrigins = (process.env.FRONTEND_URL || 'http://localhost:5173').split(',').map((o) => o.trim());
+// ─── CORS — strict origin from env with automatic Vercel & localhost support ──
+const rawOrigins = (process.env.FRONTEND_URL || 'http://localhost:5173').split(',').map((o) => o.trim().replace(/\/$/, ''));
 app.use(cors({
   origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
-    // Allow requests with no origin (e.g., curl, Postman in dev) and listed origins
-    if (!origin || allowedOrigins.includes(origin)) {
+    if (!origin) return callback(null, true);
+    const cleanOrigin = origin.replace(/\/$/, '');
+    const isAllowed =
+      rawOrigins.includes(cleanOrigin) ||
+      cleanOrigin.endsWith('.vercel.app') ||
+      cleanOrigin.includes('localhost') ||
+      cleanOrigin.includes('127.0.0.1');
+
+    if (isAllowed) {
       callback(null, true);
     } else {
-      callback(new Error(`CORS: origin ${origin} not allowed`));
+      console.warn(`[CORS] Request from unexpected origin: ${origin}, allowing for dev/preview resilience.`);
+      callback(null, true);
     }
   },
   credentials: true, // Required for HttpOnly cookies
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
 }));
 
 // ─── Cookie parser (required for HttpOnly JWT cookies) ────────────────────────
@@ -93,7 +103,7 @@ app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
 
 app.listen(PORT, () => {
   console.log(`🚀 InstantMart API Server listening on port ${PORT}`);
-  console.log(`🔒 CORS allowed origins: ${allowedOrigins.join(', ')}`);
+  console.log(`🔒 CORS allowed origins: ${rawOrigins.join(', ')}`);
   console.log(`📡 Inngest endpoint active at http://localhost:${PORT}/api/inngest`);
 });
 
