@@ -21,7 +21,7 @@ export const uploadImage = async (req: Request, res: Response) => {
       (resolve, reject) => {
         const uploadStream = cloudinary.uploader.upload_stream(
           {
-            folder: 'instantmart',
+            folder: 'Grocery wesite clone',
             resource_type: 'image',
             // Let Cloudinary choose best format & compression on delivery
             fetch_format: 'auto',
