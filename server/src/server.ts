@@ -13,6 +13,7 @@ import addressRoutes from './routes/addressRoutes';
 import adminRoutes from './routes/adminRoutes';
 import deliveryPartnerRoutes from './routes/deliveryPartnerRoutes';
 import webhookRoutes from './routes/webhookRoutes';
+import uploadRoutes from './routes/uploadRoutes';
 import { apiLimiter } from './middleware/rateLimiter';
 
 dotenv.config();
@@ -69,6 +70,7 @@ app.use('/api/orders',   orderRoutes);
 app.use('/api/addresses', addressRoutes);
 app.use('/api/admin',    adminRoutes);
 app.use('/api/delivery', deliveryPartnerRoutes);
+app.use('/api/upload',   uploadRoutes);
 
 // ─── 404 Handler ──────────────────────────────────────────────────────────────
 app.use((_req: Request, res: Response) => {
