@@ -1,8 +1,22 @@
-import { NavLink, Outlet } from "react-router-dom";
+import { NavLink, Outlet, Navigate } from "react-router-dom";
 import { PlusIcon, PackageSearchIcon, ShoppingBagIcon, LogOutIcon, BarChart3Icon, ShieldIcon, Truck } from "lucide-react";
 import Navbar from "../../components/navbar";
+import { useAuth } from "../../context/oContext";
+import Loading from "../../components/loading";
 
 export default function AdminLayout() {
+    const { user, loading } = useAuth();
+
+    // 1. Pendant la vérification du statut d'authentification, ne rien afficher du panneau admin
+    if (loading) {
+        return <Loading />;
+    }
+
+    // 2. Si non connecté OU non administrateur, redirection IMMÉDIATE vers l'accueil "/"
+    // Le contenu admin n'est jamais monté ni rendu pour un visiteur ou un client
+    if (!user || !user.isAdmin) {
+        return <Navigate to="/" replace />;
+    }
 
     const AdminLinkData = [
         { to: "/admin", label: "Dashboard", icon: BarChart3Icon },
@@ -11,7 +25,7 @@ export default function AdminLayout() {
         { to: "/admin/orders", label: "Orders", icon: ShoppingBagIcon },
         { to: "/admin/delivery-partners", label: "Delivery Partners", icon: Truck },
         { to: "/", label: "Exit", icon: LogOutIcon },
-    ]
+    ];
 
     return (
         <div className="h-screen overflow-hidden">
@@ -27,7 +41,6 @@ export default function AdminLayout() {
                         </h2>
                     </div>
                     <nav className="flex flex-col gap-1.5">
-
                         {AdminLinkData.map((link) => (
                             <NavLink
                                 key={link.to}
